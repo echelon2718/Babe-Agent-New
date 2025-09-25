@@ -149,7 +149,7 @@ def add_combo_to_order(
     quantity: int,
     combo_items: list[dict],
     access_token: str
-) -> None:
+) :
     """
     Tambahkan combo ke order yang sudah ada.
 
@@ -168,33 +168,32 @@ def add_combo_to_order(
 
     # Build form-data payload
     payload = {
-        "order_id": order_id,
-        "item_combo_id": combo_id,
-        "item_combo_qty": quantity,
+        "order_id": str(order_id),
+        "item_combo_id": str(combo_id),
+        "item_combo_qty": str(quantity),
     }
 
     # Masukkan item combo dalam format array-style form-data
     for i, item in enumerate(combo_items):
         payload[f"item_combo_items[{i}][id]"] = str(item["id"])
         payload[f"item_combo_items[{i}][product_id]"] = str(item["product_id"])
-        if "product_variant_id" in item and item["product_variant_id"]:
+        if item.get("product_variant_id"):
             payload[f"item_combo_items[{i}][product_variant_id]"] = str(item["product_variant_id"])
 
     headers = {
         "Authorization": f"Bearer {access_token}",
-        "Accept": "application/json",
     }
 
     try:
         response = requests.post(url, data=payload, headers=headers)  # gunakan data=payload agar jadi form-data
         response.raise_for_status()
-        return response.json()
+        return True, response.json()
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred on combo inputting: {http_err} - Response: {response.text}")
-        return None
+        return False, None
     except Exception as err:
         print(f"Other error occurred on combo inputting: {err}")
-        return None
+        return False, None
 
 def get_product_item_df(access_token, page=1):
     url = "https://api-open.olsera.co.id/api/open-api/v1/en/product"
@@ -608,3 +607,25 @@ def cetak_struk(order_no: str, phone: str) -> str:
     url = f"https://invoice.olsera.co.id/pos-receipt?lang=id&store=kulkasbabe&order_no={order_no}"
     print(url)
     return url
+
+def _add_combo_to_order(order_id:str, combo_id:str,quantity:int, combo_items:list,access_token:str) : 
+    url = "https://api-open.olsera.co.id/api/open-api/v1/en/order/openorder/additemcombo"
+
+    params = {
+        "order_id" : order_id,
+        "item_combo_id" : combo_id,
+        "item_combo_qty" : quantity,
+        "item_combo_items" : combo_items,
+    }
+
+    headers = {
+        "Authorization" : f"Bearer {access_token}",
+        "Content-Type" : "application/json"
+    }
+    try : 
+        response = requests.post(url,json=params,headers=headers)
+        response.raise_for_status()
+        return True, response.json()
+    except requests.exceptions.HTTPError as http_err : 
+        print(f"HTTP error occurred on order detail update: {http_err} - Response: {response.text}")
+        return False, None

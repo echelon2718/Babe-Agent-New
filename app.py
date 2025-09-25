@@ -3,7 +3,8 @@ import json
 import os
 import pika
 from dotenv import load_dotenv
-from modules.llm_call_new_v2 import AgentBabe
+# from modules.llm_call_new_v2 import AgentBabe
+from modules.llm_v3_review import AgentBabe
 import google.generativeai as genai
 pd.options.mode.chained_assignment = None  
 import threading
@@ -16,7 +17,7 @@ gmap_api_key = os.getenv("GMAP_API_KEY")
 genai.configure(api_key=genai_api_key)
 
 
-agent = AgentBabe(df_combo_dir='./product_combos.csv', df_product_dir='./product_items.csv', top_k_retrieve=100, gmap_api_key=gmap_api_key)
+agent = AgentBabe(df_combo_dir='./product_combos_v2.csv', df_product_dir='./product_items.csv', top_k_retrieve=100, gmap_api_key=gmap_api_key)
 credentials = pika.PlainCredentials('guest', 'guest')
 parameters = pika.ConnectionParameters(
     host='31.97.106.30',
@@ -38,7 +39,7 @@ def send_reply(from_number, to_number, order_body, mode="launch"):
 
     def run_agent():
         try:
-            result = agent.handle_order(order_body, access_token_dir="./token_cache.json")
+            result = agent.handle_order(order_body, access_token_dir="./storage/app/token_cache.json")
             response_message_container["result"] = result
         except Exception as e:
             response_message_container["result"] = f"❌ Terjadi kesalahan saat memproses pesanan. Error {e}"

@@ -161,6 +161,62 @@ def address_to_latlng(address, api_key):
 #             provinsi = comp.get("long_name")
 
 def resolve_maps_shortlink(shortlink, api_key, timeout=10):
+    try:
+        # --- Step 1: Expand shortlink dengan follow redirect ---
+        resp = requests.get(shortlink, allow_redirects=True, timeout=timeout)
+        final_url = resp.url
+
+        # --- Step 2: Extract place name dari URL ---
+        place_match = re.search(r'/maps/place/([^/]+)', final_url)
+        place_name = urllib.parse.unquote_plus(place_match.group(1)) if place_match else None
+
+        # --- Step 3: Extract coordinates ---
+        lat = lng = None
+        # Format @lat,lng
+        match_at = re.search(r'/@(-?\d+\.\d+),(-?\d+\.\d+)', final_url)
+        if match_at:
+            lat, lng = map(float, match_at.groups())
+        else:
+            # Format !3dlat!4dlng
+            match_34 = re.search(r'!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', final_url)
+            if match_34:
+                lat, lng = map(float, match_34.groups())
+
+        # --- Step 4: Geocoding API ---
+        if lat is not None and lng is not None:
+            endpoint = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lng}&key={api_key}"
+        elif place_name:
+            addr = urllib.parse.quote_plus(place_name)
+            endpoint = f"https://maps.googleapis.com/maps/api/geocode/json?address={addr}&key={api_key}"
+        else:
+            return None, None, None, None, None, None, None
+
+        res = requests.get(endpoint).json()
+        if res.get("status") != "OK" or not res.get("results"):
+            return place_name, (lat, lng), None, None, None, None, place_name
+
+        info = res["results"][0]
+        formatted_address = info.get("formatted_address")
+
+        # --- Step 5: Extract components ---
+        kelurahan = kecamatan = kota = provinsi = None
+        for comp in info.get("address_components", []):
+            types = comp.get("types", [])
+            if any(t in types for t in ["administrative_area_level_4", "sublocality_level_1", "locality"]):
+                kelurahan = kelurahan or comp.get("long_name")
+            if "administrative_area_level_3" in types:
+                kecamatan = comp.get("long_name")
+            if "administrative_area_level_2" in types:
+                kota = comp.get("long_name")
+            if "administrative_area_level_1" in types:
+                provinsi = comp.get("long_name")
+
+        return formatted_address, (lat, lng), kelurahan, kecamatan, kota, provinsi
+
+    except Exception as e:
+        print(f"Gagal resolve shortlink {shortlink}: {e}")
+        return None, None, None, None, None, None, None
+def _resolve_maps_shortlink(shortlink, api_key, timeout=10):
     # --- Step 1: Open headless browser and resolve shortlink ---
     options = Options()
     options.page_load_strategy = 'none'

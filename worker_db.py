@@ -7,7 +7,7 @@ import pandas as pd
 import os
 import json
 
-from modules.crud_utility import fetch_all_product_combos, fetch_all_product_item
+from modules.crud_utility import fetch_all_product_item,fetch_all_product_combos_v2
 
 load_dotenv()
 
@@ -19,13 +19,15 @@ print(f"Secret: {secret_key}")
 
 def job():
     print(f"[{datetime.now()}] Starting combo fetch job.")
-    with open("token_cache.json", "r") as file:
+    with open("./storage/app/token_cache.json", "r") as file:
         token_data = json.load(file)
 
     access_token = token_data.get("access_token", "")
 
-    combos = fetch_all_product_combos(access_token)
-    pd.DataFrame(combos).to_csv("product_combos.csv", index=False)
+    combos = fetch_all_product_combos_v2(access_token)
+    pd.DataFrame(combos).to_csv("product_combos_v2.csv", index=False)
+    with open("product_combos_v2.json", "w", encoding="utf-8") as f:
+        json.dump(combos, f, ensure_ascii=False, indent=4)
     print(f"[{datetime.now()}] Fetched {len(combos)} and saved product combos.")
 
     items = fetch_all_product_item(access_token)
